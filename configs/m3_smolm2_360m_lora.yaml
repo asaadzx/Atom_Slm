@@ -1,0 +1,49 @@
+# M3 — Compare bases (LoRA on SmolLM2-360M)
+# Cheaper than full FT: adapters only, base weights frozen. Compare accuracy-per-MB
+# against the M2 135M run before committing to a deployment target.
+run_name: m3-smollm2-360m-lora-openmath
+base_model: HuggingFaceTB/SmolLM2-360M
+method: lora
+precision: fp16
+seed: 42
+
+data:
+  name: openmathinstruct
+  max_samples: 500000
+  val_samples: 2000
+  streaming: true
+
+training:
+  max_length: 2048
+  epochs: 1
+  per_device_batch_size: 4
+  grad_accum: 16
+  learning_rate: 2.0e-4       # LoRA tolerates a higher LR than full FT
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  optim: adamw_torch          # switch to adamw_8bit if memory is tight
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 50
+  save_steps: 1000
+  eval_steps: 1000
+  save_total_limit: 2
+
+lora:
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+hub:
+  push_to_hub: true
+  repo_id: Asaadzx/atom-slm-math-360m-lora
+  private: false
+  strategy: every_save

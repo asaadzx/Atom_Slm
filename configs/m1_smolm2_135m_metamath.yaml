@@ -1,0 +1,35 @@
+# M1 — Recreate the pipeline (Track A baseline)
+# Full fine-tune of SmolLM2-135M on a MetaMathQA subset, ~1–3 GPU-hours on a T4.
+run_name: m1-smollm2-135m-metamath
+base_model: HuggingFaceTB/SmolLM2-135M
+method: full
+precision: fp16          # T4/P100 have no bf16
+seed: 42
+
+data:
+  name: metamath
+  max_samples: 60000     # 395k available; start small to learn the pipeline
+  val_samples: 1000
+  streaming: true
+
+training:
+  max_length: 1024
+  epochs: 1
+  per_device_batch_size: 8    # effective batch = 8 * 8 = 64
+  grad_accum: 8
+  learning_rate: 5.0e-5
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  optim: adamw_torch
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 20
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 2
+
+hub:
+  push_to_hub: true
+  repo_id: Asaadzx/atom-slm-math-135m
+  private: false
+  strategy: every_save

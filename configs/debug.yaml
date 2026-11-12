@@ -1,0 +1,31 @@
+# Debug config — tiny run for validating the pipeline (a few minutes on CPU/GPU).
+# Also exercised by `python -m atom_slm.train --config configs/debug.yaml --smoke-test`.
+run_name: debug-smollm2-135m
+base_model: HuggingFaceTB/SmolLM2-135M
+method: full
+precision: fp16
+seed: 42
+
+data:
+  name: metamath
+  max_samples: 128
+  val_samples: 16
+  streaming: true
+
+training:
+  max_length: 512
+  epochs: 1
+  per_device_batch_size: 2
+  grad_accum: 1
+  learning_rate: 5.0e-5
+  optim: adamw_torch
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 1
+  save_steps: 10
+  eval_steps: 10
+  save_total_limit: 1
+
+hub:
+  push_to_hub: false
+  repo_id: Asaadzx/atom-slm-debug

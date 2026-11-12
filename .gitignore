@@ -1,0 +1,55 @@
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Training artifacts
+runs/
+outputs/
+checkpoints/
+wandb/
+*.log
+metrics.json
+run_config.yaml
+
+# Models / data (large files stay out of git; they live on the Hub)
+data/*
+!data/.gitkeep
+datasets/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+
+# Kaggle credentials (never commit)
+.kaggle/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Keep empty-directory placeholders
+!data/.gitkeep
+!results/.gitkeep

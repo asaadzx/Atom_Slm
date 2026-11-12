@@ -1,0 +1,5 @@
+model,params,q4_mb,gsm8k,math,in_domain,mmlu,arc_e,hellaswag,piqa,winogrande,ppl,tok_s_cpu,ctx
+SmolLM2-135M,135M,100,1,0,,30,40,40,,,,
+SmolLM2-360M,360M,250,3,1,,35,45,45,,,,
+Qwen2.5-0.5B,0.5B,350,20,5,,45,50,50,,,,
+ATOM-SLM (M1),135M,,,,,,,,,,,,

@@ -1,0 +1,8 @@
+# Extra packages used inside Kaggle notebooks (on top of requirements.txt).
+-r requirements.txt
+
+sentencepiece>=0.2
+protobuf>=4.25
+bitsandbytes>=0.44         # optional 8-bit optimizer / QLoRA
+lm-eval>=0.4.5             # official benchmark harness (§17)
+kaggle>=1.6                # only needed when pushing kernels from a local machine

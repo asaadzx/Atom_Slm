@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atom-slm"
+version = "0.1.0"
+description = "ATOM-SLM: a small, math-capable language model that runs on phones and student laptops."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Asaad Zein" }]
+keywords = ["llm", "small-language-model", "math", "gsm8k", "sft", "lora"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "torch>=2.3",
+  "transformers>=4.46",
+  "trl>=0.13",
+  "peft>=0.13",
+  "accelerate>=1.0",
+  "datasets>=3.0",
+  "huggingface-hub>=0.24",
+  "pyyaml>=6.0",
+  "numpy>=1.26",
+  "pandas>=2.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+quant = ["bitsandbytes>=0.44"]
+bench = ["lm-eval>=0.4.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

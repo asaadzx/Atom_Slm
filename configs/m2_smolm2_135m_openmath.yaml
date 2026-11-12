@@ -1,0 +1,35 @@
+# M2 — Scale the data
+# SmolLM2-135M on an OpenMathInstruct-2 subset (streamed, not fully downloaded).
+run_name: m2-smollm2-135m-openmath
+base_model: HuggingFaceTB/SmolLM2-135M
+method: full
+precision: fp16
+seed: 42
+
+data:
+  name: openmathinstruct
+  max_samples: 500000     # 500k–1M is the M2 range; watch Kaggle disk/time
+  val_samples: 2000
+  streaming: true
+
+training:
+  max_length: 2048
+  epochs: 1
+  per_device_batch_size: 4    # effective batch = 4 * 16 = 64
+  grad_accum: 16
+  learning_rate: 4.0e-5
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  optim: adamw_torch
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 50
+  save_steps: 1000
+  eval_steps: 1000
+  save_total_limit: 2
+
+hub:
+  push_to_hub: true
+  repo_id: Asaadzx/atom-slm-math-135m-openmath
+  private: false
+  strategy: every_save
