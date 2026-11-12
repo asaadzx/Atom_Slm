@@ -25,13 +25,23 @@ checkpoints to the Hub every `save_steps`.
 |---|---|
 | 1 | GPU/driver check + dependency install (torch is *not* reinstalled) |
 | 2 | Clone this repo into `/kaggle/working` and put `src/` on `sys.path` |
-| 3 | Write a run config from a few obvious variables |
+| 3 | Write a run config from a few obvious variables (`SMOKE_TEST` lives here) |
 | 4 | Hugging Face login via Kaggle Secrets |
 | 5 | Optional baseline GSM8K eval (know your starting point) |
-| 6 | Training (`atom_slm.train`) — full FT or LoRA |
-| 7 | Post-training GSM8K eval + base-vs-tuned table |
-| 8 | Artifact summary, optional GGUF export instructions |
-| 9 | Resume-from-Hub cell for a new session |
+| 6 | Optional resume of checkpoints from the Hub |
+| 7 | Training (`atom_slm.train`) — full FT or LoRA |
+| 8 | Post-training GSM8K eval + base-vs-tuned table |
+| 9 | Artifact summary |
+| 10 | Optional merge + GGUF export |
+
+### Run the smoke test first
+
+In section 3 set `SMOKE_TEST = True`, then Run all. That trains 5 steps on 64
+rows, evaluates 50 GSM8K items, uses a `-smoke` run directory and disables Hub
+pushes. If it finishes without errors (~10 min), the pipeline is healthy — set
+`SMOKE_TEST = False` and start the real M1 run.
+
+The equivalent from a terminal is `./scripts/smoke_test.sh`.
 
 ## 3. T4 rules of thumb
 

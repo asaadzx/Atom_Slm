@@ -41,13 +41,14 @@ Locked design decisions (details in plan §4–§5):
 ├── configs/                  # M1 / M2 / M3 / debug training configs
 ├── docs/
 │   ├── Project ATOM-SLM - Plan.md   # the full project plan
-│   └── kaggle.md                    # Kaggle T4 playbook (limits, resume, tips)
+│   ├── kaggle.md                    # Kaggle T4 playbook (limits, resume, tips)
+│   └── testing.md                   # test tiers + M1 acceptance criteria
 ├── kaggle/
 │   └── kernel-metadata.json         # template for `kaggle kernels push`
 ├── notebooks/
 │   └── atom_slm_kaggle_t4.ipynb     # end-to-end training on a free T4
 ├── results/                  # eval JSONs, scorecards, example CSV
-├── scripts/                  # thin shell wrappers (train, eval, GGUF, resume)
+├── scripts/                  # train, eval, GGUF, resume, smoke test
 ├── src/atom_slm/
 │   ├── prompts.py            # answer parsing + `####` normalization (no deps)
 │   ├── data.py               # MetaMathQA / OpenMathInstruct-2 → chat format
@@ -86,6 +87,10 @@ pipeline (data → chat template → packing → training → checkpoint) in min
 It clones this repo, installs the training stack, trains, evaluates GSM8K
 **before and after**, pushes checkpoints to the Hub, and prints a comparison
 table. Full walkthrough: [`docs/kaggle.md`](docs/kaggle.md).
+
+> **Test before you train:** set `SMOKE_TEST = True` in the notebook's config
+> cell for a ~10 minute, 5-step end-to-end validation (no Hub push). Only then
+> switch it back to `False` for the real M1 run.
 
 ```bash
 # from a local machine, the same thing without notebooks:
@@ -181,6 +186,21 @@ Mirrors plan §12 — check boxes as milestones land.
 - [ ] **M6** — Context extension to 8192 (continued pretrain + YaRN)
 - [ ] **M7** — Model card, datacard, blog post
 - [ ] **BM1 / BM2** — ATOM Index scorecard after M4 and M6
+
+## Testing
+
+Cheapest checks first — full tier list and pass criteria in
+[`docs/testing.md`](docs/testing.md).
+
+```bash
+PYTHONPATH=src pytest -q      # T0: unit + notebook tests, no GPU, no downloads
+./scripts/smoke_test.sh       # T1: 5-step train + tiny evals (run on Kaggle)
+```
+
+T1 validates the entire path — data → chat template → packing → training →
+checkpoint → evaluation — in about 10 minutes. M1 acceptance thresholds
+(format rate ≥ 90%, GSM8K above base, degenerate rate < 5%) are listed in the
+testing doc.
 
 ## Development
 

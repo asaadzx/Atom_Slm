@@ -15,6 +15,7 @@ python -m pip install -q -U \
   "protobuf>=4.25" \
   "bitsandbytes>=0.44" \
   "lm-eval>=0.4.5" \
+  "pytest>=8.0" \
   "pyyaml>=6.0"
 
 python - <<'PY'
