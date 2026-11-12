@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .data import build_prompt_text, load_gsm8k
+from .data import load_gsm8k
 from .prompts import INSTRUCTION, answers_match, extract_answer
 from .utils import set_seed
 

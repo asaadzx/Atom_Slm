@@ -22,6 +22,7 @@ multi-hour run over a renamed config field.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import logging
 import os
@@ -223,7 +224,7 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset, sft_config):
         "train_dataset": train_dataset,
         "eval_dataset": eval_dataset,
     }
-    if "processing_class" in __import__("inspect").signature(SFTTrainer.__init__).parameters:
+    if "processing_class" in inspect.signature(SFTTrainer.__init__).parameters:
         kwargs["processing_class"] = tokenizer
     else:  # older TRL
         kwargs["tokenizer"] = tokenizer
@@ -251,6 +252,9 @@ def main(argv: list[str] | None = None) -> int:
         push_to_hub = False
 
     model, tokenizer = build_model_and_tokenizer(config)
+    # Re-save after precision detection so the recorded config matches reality.
+    save_config(config, output_dir / "run_config.yaml")
+    LOGGER.info("Resolved precision: %s", config["precision"])
     train_dataset, eval_dataset = build_sft_datasets(config, tokenizer)
 
     sft_config = build_sft_config(config, output_dir, push_to_hub=push_to_hub)

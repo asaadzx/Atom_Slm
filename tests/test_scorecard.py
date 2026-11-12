@@ -60,9 +60,32 @@ def test_stronger_model_scores_higher_on_math():
     assert scored.loc["big-strong", "MathScore"] > scored.loc["tiny-but-weak", "MathScore"]
 
 
-def test_math_per_mb_penalizes_size():
+def test_math_per_mb_is_inverse_to_size():
     scored = build_scorecard(_frame()).set_index("model")
-    assert scored.loc["tiny-but-weak", "Math_per_MB"] > scored.loc["big-strong", "Math_per_MB"]
+    expected = scored["MathScore"] / scored["q4_mb"]
+    assert np.allclose(scored["Math_per_MB"].dropna(), expected.dropna(), atol=0.01)
+
+
+def test_math_per_mb_prefers_the_smaller_model_at_equal_quality():
+    base = {
+        "gsm8k": 20,
+        "math": 5,
+        "mmlu": 40,
+        "arc_e": 50,
+        "hellaswag": 50,
+        "piqa": 70,
+        "winogrande": 60,
+        "tok_s_cpu": 20,
+    }
+    frame = pd.DataFrame(
+        [
+            {"model": "small", "q4_mb": 100, **base},
+            {"model": "large", "q4_mb": 400, **base},
+            {"model": "reference", "q4_mb": 250, **{**base, "gsm8k": 30}},
+        ]
+    )
+    scored = build_scorecard(frame).set_index("model")
+    assert scored.loc["small", "Math_per_MB"] > scored.loc["large", "Math_per_MB"]
 
 
 def test_missing_columns_are_tolerated():
