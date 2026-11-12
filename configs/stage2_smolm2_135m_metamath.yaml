@@ -1,0 +1,40 @@
+# Stage 2 — better M1 (same 135M model, stronger recipe)
+# 100k MetaMathQA rows, 2 epochs, LR 1e-4, numeric answers only, best checkpoint.
+# Same as notebooks/atomslm_dev_stage2.ipynb; ~3–5 GPU-hours on a T4.
+run_name: m2a-smollm2-135m-metamath-2ep
+base_model: HuggingFaceTB/SmolLM2-135M
+method: full
+precision: fp16
+seed: 42
+
+data:
+  name: metamath
+  max_samples: 100000
+  val_samples: 1000
+  streaming: true
+  require_numeric_answer: true   # drop rows whose #### answer is not a number
+
+training:
+  max_length: 1024
+  epochs: 2.0
+  per_device_batch_size: 8       # effective batch 64
+  grad_accum: 8
+  learning_rate: 1.0e-4
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  optim: adamw_torch
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 20
+  save_steps: 500
+  eval_steps: 500                # must equal save_steps for load_best_model_at_end
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+hub:
+  push_to_hub: true
+  repo_id: Asaadzx/atom-slm-math-135m-v2
+  private: false
+  strategy: every_save

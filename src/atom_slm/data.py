@@ -20,6 +20,7 @@ from .prompts import (
     INSTRUCTION,
     ensure_answer_marker,
     has_answer_marker,
+    has_numeric_answer,
     plain_example,
     plain_prompt,
 )
@@ -162,6 +163,16 @@ def build_sft_datasets(
         desc="Filtering empty rows",
     )
     dataset = dataset.shuffle(seed=seed)
+
+    if data_cfg.get("require_numeric_answer", False):
+        before = len(dataset)
+        dataset = dataset.filter(
+            lambda row: has_numeric_answer(row["solution"]),
+            desc="Filtering non-numeric answers",
+        )
+        LOGGER.info(
+            "Numeric-answer filter kept %d/%d rows.", len(dataset), before
+        )
 
     missing = sum(0 if has_answer_marker(text) else 1 for text in dataset["solution"])
     if missing:

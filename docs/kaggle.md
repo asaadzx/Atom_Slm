@@ -3,6 +3,16 @@
 Everything in this guide is free-tier friendly: **T4 x2** (or P100), ~30 GPU
 hours per week, 9–12 hour sessions, ~20 GB of working disk.
 
+## 0. Which notebook?
+
+| Notebook | Purpose |
+|---|---|
+| `atom_slm_kaggle_t4.ipynb` | M1 training: 60k rows, 1 epoch, baseline vs tuned |
+| `atomslm_dev_stage2.ipynb` | Stage 2: 100k rows, 2 epochs, LR 1e-4, matched 0-shot eval, best checkpoint |
+| `test_notebook.ipynb` | load a Hub checkpoint and prompt it — no training |
+
+Run Stage 2 after M1's smoke test passes and its numbers look sane.
+
 ## 1. One-time setup
 
 1. Create a Kaggle Notebook → **File → Import Notebook** → upload

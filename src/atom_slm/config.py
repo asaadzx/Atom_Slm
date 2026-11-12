@@ -21,6 +21,7 @@ DEFAULTS: dict[str, Any] = {
         "val_samples": 1000,
         "streaming": True,
         "seed": 42,
+        "require_numeric_answer": False,
     },
     "training": {
         "max_length": 1024,
@@ -39,6 +40,9 @@ DEFAULTS: dict[str, Any] = {
         "save_steps": 500,
         "eval_steps": 500,
         "save_total_limit": 2,
+        "load_best_model_at_end": False,
+        "metric_for_best_model": "eval_loss",
+        "greater_is_better": False,
         "num_workers": 2,
     },
     "lora": {

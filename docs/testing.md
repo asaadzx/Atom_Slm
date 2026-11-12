@@ -17,13 +17,21 @@ pip install pytest pyyaml numpy pandas    # CI does this; no torch needed
 PYTHONPATH=src pytest -q
 ```
 
-Expected: `39 passed`. These tests need no GPU, no model download, no network.
+Expected: `43 passed`. These tests need no GPU, no model download, no network.
 
 ## T1 — pipeline smoke test
 
 **Option A (notebook):** open `notebooks/atom_slm_kaggle_t4.ipynb`, set
 `SMOKE_TEST = True` in the config cell, Run all. It trains 5 steps on 64 rows,
 evaluates 50 GSM8K items, and disables Hub pushes.
+
+**Stage 2 (stronger recipe):** `notebooks/atomslm_dev_stage2.ipynb` — 100k rows,
+2 epochs, LR 1e-4, numeric-answer filter, best-checkpoint selection, and
+evaluation on the exact training prompt. Use it after M1 accepts.
+
+**Single-checkpoint test:** `notebooks/test_notebook.ipynb` loads any Hub
+checkpoint, asks it questions, prints the raw answer and the parsed final
+answer, and runs a 20-item GSM8K sanity check. No repo clone needed.
 
 **Option B (script):**
 

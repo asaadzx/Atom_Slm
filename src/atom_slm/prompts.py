@@ -147,6 +147,17 @@ def has_answer_marker(text: str | None, marker: str = ANSWER_MARKER) -> bool:
     return bool(text) and marker in text
 
 
+def has_numeric_answer(text: str | None, marker: str = ANSWER_MARKER) -> bool:
+    """True when ``text`` carries a ``####`` marker whose answer is a number.
+
+    Used to drop MetaMathQA rows with prose-only final answers; those teach the
+    model to ramble instead of emitting a comparable number.
+    """
+    if not has_answer_marker(text, marker):
+        return False
+    return last_number(extract_answer(text)) is not None
+
+
 def last_number(text: str | None) -> str | None:
     """Return the last number in ``text`` (used only for diagnostics)."""
     if not text:

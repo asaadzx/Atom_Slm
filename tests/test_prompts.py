@@ -5,6 +5,7 @@ from atom_slm.prompts import (
     ensure_answer_marker,
     extract_answer,
     has_answer_marker,
+    has_numeric_answer,
     last_number,
     normalize_answer,
 )
@@ -79,3 +80,15 @@ def test_ensure_answer_marker_keeps_unparseable_solution():
 
 def test_last_number_is_diagnostic_only():
     assert last_number("we tried 3 then 9.5 and finally 12") == "12"
+
+
+def test_has_numeric_answer_accepts_numbers():
+    assert has_numeric_answer("We get 12.\n#### 12")
+    assert has_numeric_answer("Work.\n#### $1,200")
+    assert has_numeric_answer("Work.\n#### 3.5")
+
+
+def test_has_numeric_answer_rejects_prose_and_missing_markers():
+    assert not has_numeric_answer("Work.\n#### twelve dollars")
+    assert not has_numeric_answer("No marker here, answer 12")
+    assert not has_numeric_answer("")

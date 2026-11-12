@@ -46,7 +46,9 @@ Locked design decisions (details in plan §4–§5):
 ├── kaggle/
 │   └── kernel-metadata.json         # template for `kaggle kernels push`
 ├── notebooks/
-│   └── atom_slm_kaggle_t4.ipynb     # end-to-end training on a free T4
+│   ├── atom_slm_kaggle_t4.ipynb     # end-to-end training on a free T4 (M1)
+│   ├── atomslm_dev_stage2.ipynb     # Stage 2: stronger recipe + matched eval
+│   └── test_notebook.ipynb          # load a Hub checkpoint, prompt it, inspect
 ├── results/                  # eval JSONs, scorecards, example CSV
 ├── scripts/                  # train, eval, GGUF, resume, smoke test
 ├── src/atom_slm/
@@ -55,6 +57,7 @@ Locked design decisions (details in plan §4–§5):
 │   ├── config.py             # YAML config with defaults + overrides
 │   ├── train.py              # SFT trainer (full FT or LoRA, fp16 on T4)
 │   ├── evaluate.py           # fast GSM8K eval + base-vs-tuned report
+│   ├── diagnose.py           # loss curve, weight delta, raw generations
 │   ├── merge.py              # merge LoRA adapters (M4)
 │   └── scorecard.py          # ATOM Index (plan §17.5)
 └── tests/                    # unit tests for parsing, config, scorecard
@@ -83,6 +86,12 @@ pipeline (data → chat template → packing → training → checkpoint) in min
 2. Settings: **GPU T4 x2**, **Internet on**.
 3. Secrets: `HF_TOKEN` (write access), optionally `WANDB_API_KEY`.
 4. Edit the config cell (`METHOD`, `MAX_SAMPLES`, `HF_REPO_ID`, …) and run all.
+
+| Notebook | Use it for |
+|---|---|
+| [`atom_slm_kaggle_t4.ipynb`](notebooks/atom_slm_kaggle_t4.ipynb) | M1: baseline pipeline, 60k rows, 1 epoch |
+| [`atomslm_dev_stage2.ipynb`](notebooks/atomslm_dev_stage2.ipynb) | Stage 2: 100k rows, 2 epochs, LR 1e-4, matched 0-shot eval |
+| [`test_notebook.ipynb`](notebooks/test_notebook.ipynb) | load a Hub checkpoint, ask it questions, 20-item GSM8K check |
 
 It clones this repo, installs the training stack, trains, evaluates GSM8K
 **before and after**, pushes checkpoints to the Hub, and prints a comparison
