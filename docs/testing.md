@@ -17,7 +17,7 @@ pip install pytest pyyaml numpy pandas    # CI does this; no torch needed
 PYTHONPATH=src pytest -q
 ```
 
-Expected: `34 passed`. These tests need no GPU, no model download, no network.
+Expected: `39 passed`. These tests need no GPU, no model download, no network.
 
 ## T1 — pipeline smoke test
 
@@ -64,9 +64,22 @@ Bigger gains belong to M2 (more data) and M3 (larger base/distillation).
 ```bash
 # what the notebook runs, if you prefer the CLI:
 python -m atom_slm.evaluate --model runs/m1-smollm2-135m-metamath \
-  --limit 200 --output results/m1-gsm8k.json
+  --limit 200 --num-fewshot 0 --output results/m1-gsm8k.json
 python -m atom_slm.evaluate --compare results/base-gsm8k.json results/m1-gsm8k.json
 ```
+
+Keep `--num-fewshot 0` (the default): training rows are 0-shot and end with
+`### Solution:`, so few-shot prompts change the task and can drop accuracy to
+near zero even for a good checkpoint.
+
+```bash
+# if a number looks wrong, inspect the run before tuning hyperparameters:
+python -m atom_slm.diagnose --run runs/m1-smollm2-135m-metamath
+```
+
+It prints the loss curve, the mean weight change vs the base model, and a few
+raw generations, which separates "training did not work" from "evaluation
+asked the wrong question".
 
 ## T3 — comparable scorecard
 
@@ -94,6 +107,8 @@ python -m atom_slm.scorecard --results results/results.csv --output results/scor
 | Loss = NaN | bf16 on T4, or bad LR | `precision: fp16`; LR 5e-5 (full) / 2e-4 (LoRA) |
 | Loss flat from step 0 | chat template mismatch | print a formatted sample; check `tokenizer.chat_template` |
 | Format rate ~0% | `####` normalization missing | inspect dataset `solution` text before training |
+| Format rate low + heavy repetition after training | eval prompt differs from training prompt | evaluate with `--num-fewshot 0`; the prompt must end with `### Solution:` |
+| Accuracy ~base after training | checkpoint saved but barely trained | `python -m atom_slm.diagnose --run <run>` (loss curve + weight delta) |
 | Model repeats a word | undertrained / LR too high | train longer, lower LR, verify data quality |
 | Hub push 401/403 | token missing or read-only | create a **write** token as `HF_TOKEN` |
 | Eval extremely slow | running full 1319 items by accident | `--limit 200` (or `EVAL_LIMIT`) |

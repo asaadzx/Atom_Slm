@@ -25,6 +25,22 @@ INSTRUCTION = (
     f"{ANSWER_MARKER} <answer>"
 )
 
+def plain_prompt(question: str) -> str:
+    """Prompt used when the tokenizer has no chat template (SmolLM2 base).
+
+    This must stay byte-identical to the prefix built by
+    :func:`atom_slm.data.format_example`: if training and evaluation use
+    different delimiters, a 135M model collapses into repetition and the
+    measured accuracy says nothing about the checkpoint.
+    """
+    return f"### Question:\n{question}\n\n### Solution:\n"
+
+
+def plain_example(question: str, solution: str) -> str:
+    """Full training transcript for template-less tokenizers."""
+    return f"{plain_prompt(question)}{solution or ''}<|endoftext|>"
+
+
 _MARKER_RE = re.compile(r"####\s*(.+)")
 _BOXED_RE = re.compile(r"\\boxed\s*\{((?:[^{}]|\{[^{}]*\})*)\}")
 _ANSWER_IS_RE = re.compile(

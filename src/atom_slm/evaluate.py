@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .data import load_gsm8k
-from .prompts import INSTRUCTION, answers_match, extract_answer
+from .prompts import INSTRUCTION, answers_match, extract_answer, plain_prompt
 from .utils import model_dtype_kwarg, set_seed
 
 LOGGER = logging.getLogger("atom_slm.evaluate")
@@ -34,41 +34,56 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate a model on GSM8K.")
     parser.add_argument("--model", default=None, help="Hub id or local checkpoint path.")
     parser.add_argument("--limit", type=int, default=200, help="0 = full 1319-item test set.")
-    parser.add_argument("--num-fewshot", type=int, default=4)
+    parser.add_argument(
+        "--num-fewshot",
+        type=int,
+        default=0,
+        help="Demonstrations in the prompt. Defaults to 0: the SFT data is 0-shot, "
+        "so few-shot prompts measure a different task than the one trained.",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
     parser.add_argument("--load-in-4bit", action="store_true")
+    parser.add_argument("--show-samples", type=int, default=3, help="Log this many raw generations.")
     parser.add_argument("--output", default=None, help="Where to write the JSON report.")
     parser.add_argument("--compare", nargs="+", default=None, help="Compare existing JSON reports.")
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args(argv)
 
 
-def build_fewshot_prefix(num_fewshot: int) -> str:
-    """Standard GSM8K CoT demonstrations taken from the train split."""
+def build_fewshot_prefix(num_fewshot: int, tokenizer: Any = None) -> str:
+    """Standard GSM8K CoT demonstrations taken from the train split.
+
+    Blocks are formatted exactly like training rows, so the final
+    ``### Solution:`` cue is unchanged by adding demonstrations.
+    """
     if num_fewshot <= 0:
         return ""
     train = load_gsm8k("train")
-    shots = []
+    chat = bool(getattr(tokenizer, "chat_template", None))
+    blocks = []
     for row in train.select(range(min(num_fewshot, len(train)))):
         answer = row["answer"].split("####")[-1].strip()
         solution = row["answer"].split("####")[0].strip()
-        shots.append(
-            f"Question:\n{row['question']}\n\nAnswer:\n{solution}\n\n#### {answer}"
-        )
-    return "\n\n".join(shots) + "\n\n"
+        if chat:
+            blocks.append(f"Question:\n{row['question']}\n\nAnswer:\n{solution}\n\n#### {answer}")
+        else:
+            blocks.append(f"{plain_prompt(row['question'])}{solution}\n\n#### {answer}")
+    return "\n\n".join(blocks) + "\n\n"
 
 
-def build_eval_prompt(tokenizer: Any, question: str, fewshot_prefix: str) -> str:
-    content = f"{INSTRUCTION}\n\n{fewshot_prefix}Question:\n{question}\n\nAnswer:\n"
-    if getattr(tokenizer, "chat_template", None):
+def build_eval_prompt(tokenizer: Any, question: str, fewshot_prefix: str = "") -> str:
+    chat = bool(getattr(tokenizer, "chat_template", None))
+    if chat:
+        content = f"{INSTRUCTION}\n\n{fewshot_prefix}Question:\n{question}\n\nAnswer:\n"
         return tokenizer.apply_chat_template(
             [{"role": "user", "content": content}],
             tokenize=False,
             add_generation_prompt=True,
         )
-    return f"### Question:\n{content}\n\n### Solution:\n"
+    # Template-less models (SmolLM2 base) are trained on this exact layout.
+    return f"{fewshot_prefix}{plain_prompt(question)}"
 
 
 def stop_token_ids(tokenizer: Any) -> list[int]:
@@ -144,7 +159,7 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
     if args.limit and args.limit > 0:
         test = test.select(range(min(args.limit, len(test))))
 
-    fewshot_prefix = build_fewshot_prefix(args.num_fewshot)
+    fewshot_prefix = build_fewshot_prefix(args.num_fewshot, tokenizer)
     prompts = [build_eval_prompt(tokenizer, row["question"], fewshot_prefix) for row in test]
     stops = stop_token_ids(tokenizer)
 
@@ -206,6 +221,7 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         "split": "test",
         "limit": len(prompts),
         "num_fewshot": args.num_fewshot,
+        "prompt_style": "chat" if getattr(tokenizer, "chat_template", None) else "plain",
         "accuracy": round(correct / total, 6) if total else 0.0,
         "format_rate": round(formatted / total, 6) if total else 0.0,
         "repetition_rate": round(
@@ -230,6 +246,20 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         100 * result["format_rate"],
         100 * result["repetition_rate"],
     )
+    for sample in predictions[: max(0, args.show_samples)]:
+        LOGGER.info(
+            "sample | correct=%s | pred=%r | gold=%r | repetition=%.2f\n  %s",
+            sample["correct"],
+            sample["prediction"],
+            sample["gold"],
+            sample["repetition"],
+            sample["output"][:400].replace("\n", " "),
+        )
+    if predictions and result["format_rate"] < 0.5:
+        LOGGER.warning(
+            "Fewer than half the generations contain an answer marker. Check that the "
+            "eval prompt matches training (--num-fewshot 0, inspect --show-samples)."
+        )
     return result
 
 

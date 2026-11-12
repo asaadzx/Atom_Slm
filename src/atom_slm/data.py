@@ -11,11 +11,18 @@ from __future__ import annotations
 
 import itertools
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from datasets import Dataset, DatasetDict, load_dataset
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from datasets import Dataset, DatasetDict
 
-from .prompts import INSTRUCTION, ensure_answer_marker, has_answer_marker
+from .prompts import (
+    INSTRUCTION,
+    ensure_answer_marker,
+    has_answer_marker,
+    plain_example,
+    plain_prompt,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,8 +43,10 @@ DATASET_SPECS: dict[str, dict[str, str]] = {
 }
 
 
-def load_gsm8k(split: str = "test") -> Dataset:
+def load_gsm8k(split: str = "test") -> "Dataset":
     """Load GSM8K, tolerating the old and new Hub dataset ids."""
+    from datasets import load_dataset
+
     errors = []
     for path in ("openai/gsm8k", "gsm8k"):
         try:
@@ -53,7 +62,7 @@ def user_content(question: str, instruction: str = INSTRUCTION) -> str:
 
 
 def build_prompt_text(tokenizer: Any, question: str, instruction: str = INSTRUCTION) -> str:
-    """Render a question as a chat prompt (assistant turn left open)."""
+    """Render a question as a prompt with the assistant turn left open."""
     content = user_content(question, instruction)
     if getattr(tokenizer, "chat_template", None):
         return tokenizer.apply_chat_template(
@@ -61,7 +70,7 @@ def build_prompt_text(tokenizer: Any, question: str, instruction: str = INSTRUCT
             tokenize=False,
             add_generation_prompt=True,
         )
-    return f"### Question:\n{content}\n\n### Solution:\n"
+    return plain_prompt(question)
 
 
 def format_example(
@@ -77,10 +86,12 @@ def format_example(
     ]
     if getattr(tokenizer, "chat_template", None):
         return tokenizer.apply_chat_template(messages, tokenize=False)
-    return f"### Question:\n{question}\n\n### Solution:\n{solution or ''}<|endoftext|>"
+    return plain_example(question, solution)
 
 
-def _load_raw(config: dict[str, Any]) -> Dataset:
+def _load_raw(config: dict[str, Any]) -> "Dataset":
+    from datasets import Dataset, load_dataset
+
     data_cfg = config["data"]
     name = data_cfg["name"]
     if name not in DATASET_SPECS:
@@ -105,7 +116,7 @@ def _load_raw(config: dict[str, Any]) -> Dataset:
     return dataset
 
 
-def _standardize(dataset: Dataset, config: dict[str, Any]) -> Dataset:
+def _standardize(dataset: "Dataset", config: dict[str, Any]) -> "Dataset":
     """Map dataset-specific columns onto ``question`` / ``solution`` / ``answer``."""
     spec = DATASET_SPECS[config["data"]["name"]]
     question_col = spec["question"]
@@ -131,7 +142,7 @@ def _standardize(dataset: Dataset, config: dict[str, Any]) -> Dataset:
 def build_sft_datasets(
     config: dict[str, Any],
     tokenizer: Any,
-) -> tuple[Dataset, Dataset]:
+) -> tuple["Dataset", "Dataset"]:
     """Return ``(train, validation)`` datasets with a ``text`` field.
 
     The ``text`` field contains the full chat transcript produced by the base
@@ -180,6 +191,8 @@ def build_sft_datasets(
     return train, validation
 
 
-def build_dataset_dict(config: dict[str, Any], tokenizer: Any) -> DatasetDict:
+def build_dataset_dict(config: dict[str, Any], tokenizer: Any) -> "DatasetDict":
+    from datasets import DatasetDict
+
     train, validation = build_sft_datasets(config, tokenizer)
     return DatasetDict({"train": train, "validation": validation})
