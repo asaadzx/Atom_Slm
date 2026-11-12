@@ -21,17 +21,34 @@ multi-hour run over a renamed config field.
 
 from __future__ import annotations
 
+import os
+
+# Kaggle "T4 x2" exposes two GPUs to a single process. Hugging Face ``Trainer``
+# then wraps the model in ``nn.DataParallel``, which TRL's SFTTrainer refuses.
+# A 135M full fine-tune does not need two GPUs, so pin GPU 0 unless the user is
+# launching a real distributed run via torchrun/accelerate (those set LOCAL_RANK).
+if "LOCAL_RANK" not in os.environ and "CUDA_VISIBLE_DEVICES" not in os.environ:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    _PINNED_SINGLE_GPU = True
+else:
+    _PINNED_SINGLE_GPU = False
+
 import argparse
 import inspect
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
 from .config import load_config, save_config
 from .data import build_sft_datasets
-from .utils import detect_precision, filter_kwargs, pick_alias, set_seed
+from .utils import (
+    detect_precision,
+    filter_kwargs,
+    model_dtype_kwarg,
+    pick_alias,
+    set_seed,
+)
 
 LOGGER = logging.getLogger("atom_slm.train")
 
@@ -115,14 +132,16 @@ def build_model_and_tokenizer(config: dict[str, Any]):
     else:
         torch_dtype = torch.float32
 
-    load_kwargs: dict[str, Any] = {"torch_dtype": torch_dtype, "low_cpu_mem_usage": True}
+    load_kwargs: dict[str, Any] = {
+        model_dtype_kwarg(): torch_dtype,
+        "attn_implementation": "sdpa",
+    }
     try:
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model, attn_implementation="sdpa", **load_kwargs
-        )
+        model = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
         LOGGER.info("Loaded %s with SDPA attention (%s).", base_model, torch_dtype)
     except (ValueError, TypeError) as exc:
         LOGGER.warning("SDPA unavailable (%s); falling back to the default attention.", exc)
+        load_kwargs.pop("attn_implementation", None)
         model = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
 
     if config["training"].get("gradient_checkpointing", True):
@@ -161,7 +180,6 @@ def build_sft_config(config: dict[str, Any], output_dir: Path, push_to_hub: bool
     kwargs: dict[str, Any] = {
         "output_dir": str(output_dir),
         "run_name": config["run_name"],
-        "overwrite_output_dir": False,
         "num_train_epochs": float(train_cfg["epochs"]),
         "max_steps": int(train_cfg.get("max_steps", -1)),
         "per_device_train_batch_size": int(train_cfg["per_device_batch_size"]),
@@ -208,6 +226,16 @@ def build_sft_config(config: dict[str, Any], output_dir: Path, push_to_hub: bool
     max_len_key = pick_alias(SFTConfig, ("max_length", "max_seq_length"))
     if max_len_key:
         kwargs[max_len_key] = kwargs.pop("max_seq_length")
+
+    # transformers v5 dropped `warmup_ratio`: `warmup_steps` accepts a float
+    # below 1 and interprets it as a ratio, so the value carries over.
+    warmup_key = pick_alias(SFTConfig, ("warmup_ratio", "warmup_steps"))
+    if warmup_key:
+        kwargs[warmup_key] = kwargs.pop("warmup_ratio")
+    else:
+        LOGGER.warning("No warmup argument supported by this TRL version; skipping warmup.")
+        kwargs.pop("warmup_ratio", None)
+
     eval_key = pick_alias(SFTConfig, ("eval_strategy", "evaluation_strategy"))
     if eval_key:
         kwargs[eval_key] = kwargs.pop("eval_strategy")
@@ -239,6 +267,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parse_args(argv)
     config = load_config(args.config, build_overrides(args))
+
+    if _PINNED_SINGLE_GPU:
+        LOGGER.info(
+            "Pinned CUDA_VISIBLE_DEVICES=0 (single-process training; TRL rejects "
+            "nn.DataParallel on multi-GPU hosts)."
+        )
 
     output_dir = Path(config.get("output_dir") or f"runs/{config['run_name']}")
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -18,6 +18,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
 export PYTHONPATH="${REPO_ROOT}/src:${PYTHONPATH:-}"
 export TOKENIZERS_PARALLELISM=false
+# Same single-GPU rule as scripts/train.sh (Kaggle T4 x2).
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 
 OUT_ROOT="${ATOM_SMOKE_DIR:-/kaggle/working/atom-smoke}"
 mkdir -p "${OUT_ROOT}"

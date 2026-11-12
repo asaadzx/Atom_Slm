@@ -9,5 +9,7 @@ shift || true
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${REPO_ROOT}/src:${PYTHONPATH:-}"
 export TOKENIZERS_PARALLELISM=false
+# TRL's SFTTrainer rejects nn.DataParallel; keep single-process runs on one GPU.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 
 python -m atom_slm.train --config "${CONFIG}" "$@"

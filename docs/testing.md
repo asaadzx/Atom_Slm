@@ -17,7 +17,7 @@ pip install pytest pyyaml numpy pandas    # CI does this; no torch needed
 PYTHONPATH=src pytest -q
 ```
 
-Expected: `30 passed`. These tests need no GPU, no model download, no network.
+Expected: `34 passed`. These tests need no GPU, no model download, no network.
 
 ## T1 — pipeline smoke test
 
@@ -90,6 +90,7 @@ python -m atom_slm.scorecard --results results/results.csv --output results/scor
 |---|---|---|
 | `ModuleNotFoundError: atom_slm` | `src/` not on path | run via `scripts/*.sh` or `export PYTHONPATH=src` |
 | CUDA OOM on T4 | batch/length too high | halve `PER_DEVICE_BATCH`, double `GRAD_ACCUM` |
+| `SFTTrainer does not support nn.DataParallel` | both T4s visible to one process | trainer pins GPU 0; rerun, or set `CUDA_VISIBLE_DEVICES=0` |
 | Loss = NaN | bf16 on T4, or bad LR | `precision: fp16`; LR 5e-5 (full) / 2e-4 (LoRA) |
 | Loss flat from step 0 | chat template mismatch | print a formatted sample; check `tokenizer.chat_template` |
 | Format rate ~0% | `####` normalization missing | inspect dataset `solution` text before training |

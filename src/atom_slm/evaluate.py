@@ -25,7 +25,7 @@ from typing import Any
 
 from .data import load_gsm8k
 from .prompts import INSTRUCTION, answers_match, extract_answer
-from .utils import set_seed
+from .utils import model_dtype_kwarg, set_seed
 
 LOGGER = logging.getLogger("atom_slm.evaluate")
 
@@ -113,7 +113,7 @@ def load_model_and_tokenizer(args: argparse.Namespace):
         "bfloat16": torch.bfloat16,
         "float32": torch.float32,
     }
-    load_kwargs: dict[str, Any] = {"torch_dtype": dtype_map[args.dtype]}
+    load_kwargs: dict[str, Any] = {model_dtype_kwarg(): dtype_map[args.dtype]}
     if args.load_in_4bit:
         from transformers import BitsAndBytesConfig
 

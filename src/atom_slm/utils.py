@@ -100,3 +100,21 @@ def human_bytes(num_bytes: int | float) -> str:
             return f"{num_bytes:3.1f} {unit}"
         num_bytes /= 1024.0
     return f"{num_bytes:.1f} PB"
+
+
+def model_dtype_kwarg() -> str:
+    """Return the dtype keyword accepted by ``from_pretrained``.
+
+    Transformers v5 renamed ``torch_dtype`` to ``dtype`` (the old name still
+    works but warns). Keeping this in one place avoids deprecation spam in
+    every entry point.
+    """
+    try:
+        from transformers import __version__ as version
+    except ImportError:  # pragma: no cover - transformers is a runtime dep
+        return "torch_dtype"
+    try:
+        major = int(str(version).split(".", 1)[0])
+    except ValueError:
+        return "torch_dtype"
+    return "dtype" if major >= 5 else "torch_dtype"

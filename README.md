@@ -109,7 +109,8 @@ table. Full walkthrough: [`docs/kaggle.md`](docs/kaggle.md).
 
 Key T4 settings: **fp16 + GradScaler** (no bf16 on Turing), **SDPA attention**
 (not FlashAttention-2), gradient checkpointing, sequence packing, effective
-batch 64 via gradient accumulation.
+batch 64 via gradient accumulation. The trainer pins **one GPU** even when
+Kaggle shows two (TRL rejects `nn.DataParallel`).
 
 ### Answer format
 

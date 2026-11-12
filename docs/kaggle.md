@@ -45,6 +45,13 @@ The equivalent from a terminal is `./scripts/smoke_test.sh`.
 
 ## 3. T4 rules of thumb
 
+- **Two T4s, one process.** Kaggle's "T4 x2" makes both GPUs visible to the
+  kernel, and Hugging Face `Trainer` then wants `nn.DataParallel`, which TRL's
+  `SFTTrainer` rejects with
+  `ValueError: SFTTrainer does not support nn.DataParallel`.
+  The trainer pins `CUDA_VISIBLE_DEVICES=0` automatically. Override with
+  `CUDA_VISIBLE_DEVICES=1` if you prefer the other GPU; use `torchrun` /
+  `accelerate launch` only if you genuinely want DDP.
 - **No bf16.** The code auto-detects compute capability and falls back to
   fp16. Do not force `bf16` — you will train NaNs.
 - **Do not `pip install torch`.** Kaggle's image is already CUDA-matched.

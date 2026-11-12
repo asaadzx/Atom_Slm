@@ -23,21 +23,24 @@ def merge(args: argparse.Namespace) -> Path:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    from .utils import human_bytes
+    from .utils import human_bytes, model_dtype_kwarg
 
+    dtype_kwarg = model_dtype_kwarg()
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
 
     adapter_config = Path(args.adapter) / "adapter_config.json"
     if not adapter_config.exists():
         LOGGER.info("No adapter_config.json found: %s looks like a full fine-tune.", args.adapter)
-        model = AutoModelForCausalLM.from_pretrained(args.adapter, torch_dtype=torch.float16)
+        model = AutoModelForCausalLM.from_pretrained(
+            args.adapter, **{dtype_kwarg: torch.float16}
+        )
         tokenizer = AutoTokenizer.from_pretrained(args.adapter)
     else:
         from peft import PeftModel
 
         LOGGER.info("Loading base model %s ...", args.base)
-        model = AutoModelForCausalLM.from_pretrained(args.base, torch_dtype=torch.float16)
+        model = AutoModelForCausalLM.from_pretrained(args.base, **{dtype_kwarg: torch.float16})
         LOGGER.info("Applying adapter %s ...", args.adapter)
         model = PeftModel.from_pretrained(model, args.adapter)
         model = model.merge_and_unload()
