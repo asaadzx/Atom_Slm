@@ -22,6 +22,8 @@ DEFAULTS: dict[str, Any] = {
         "streaming": True,
         "seed": 42,
         "require_numeric_answer": False,
+        "identity_path": None,      # e.g. "data/identity/atom_identity.jsonl"
+        "identity_repeat": 50,      # repeats -> roughly 1-3% of the training set
     },
     "training": {
         "max_length": 1024,

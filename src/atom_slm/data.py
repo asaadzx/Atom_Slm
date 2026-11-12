@@ -10,7 +10,9 @@ Datasets used
 from __future__ import annotations
 
 import itertools
+import json
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -55,6 +57,27 @@ def load_gsm8k(split: str = "test") -> "Dataset":
         except Exception as exc:  # noqa: BLE001 - try the next id
             errors.append(f"{path}: {exc}")
     raise RuntimeError("Could not load GSM8K:\n" + "\n".join(errors))
+
+
+def load_identity_rows(path: str | Path) -> list[dict[str, str]]:
+    """Read a JSONL file of ``{"question", "solution"}`` identity examples.
+
+    Kept dependency-free so it can be unit-tested without ``datasets``.
+    """
+    path = Path(path)
+    rows: list[dict[str, str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        record = json.loads(line)
+        question = str(record.get("question", "")).strip()
+        solution = str(record.get("solution", "")).strip()
+        if question and solution:
+            rows.append({"question": question, "solution": solution})
+    if not rows:
+        raise ValueError(f"No usable identity rows in {path}")
+    return rows
 
 
 def user_content(question: str, instruction: str = INSTRUCTION) -> str:
@@ -182,15 +205,8 @@ def build_sft_datasets(
             len(dataset),
         )
 
-    def render(row: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "text": format_example(
-                tokenizer, row["question"], row["solution"], instruction=instruction
-            )
-        }
-
-    dataset = dataset.map(render, desc="Applying chat template")
-
+    # Split first so validation stays math-only: eval_loss must track math
+    # quality, otherwise identity rows can win "best checkpoint" by accident.
     val_size = int(data_cfg.get("val_samples", 1000))
     val_size = max(0, min(val_size, len(dataset) // 10))
     if val_size == 0:
@@ -198,6 +214,47 @@ def build_sft_datasets(
 
     validation = dataset.select(range(val_size))
     train = dataset.select(range(val_size, len(dataset)))
+
+    # Optional persona rows ("who are you?", "who made you?"). They go into the
+    # training split only, at a low ratio, so the model learns an identity
+    # without weakening the math format.
+    identity_path = data_cfg.get("identity_path")
+    if identity_path:
+        source = Path(identity_path)
+        if not source.is_absolute():
+            candidates = [
+                Path.cwd() / source,
+                Path(__file__).resolve().parents[2] / source,  # repo root
+            ]
+            source = next((p for p in candidates if p.exists()), candidates[0])
+        if not source.exists():
+            LOGGER.warning("Identity data not found at %s; continuing without it.", source)
+        else:
+            from datasets import Dataset, concatenate_datasets
+
+            identity_rows = load_identity_rows(source)
+            repeat = max(1, int(data_cfg.get("identity_repeat", 50)))
+            repeated = identity_rows * repeat
+            train = concatenate_datasets([train, Dataset.from_list(repeated)])
+            train = train.shuffle(seed=seed)
+            LOGGER.info(
+                "Mixed %d identity rows (%d x %d) into the training split only "
+                "(%.1f%% of train).",
+                len(repeated),
+                len(identity_rows),
+                repeat,
+                100 * len(repeated) / max(1, len(train)),
+            )
+
+    def render(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "text": format_example(
+                tokenizer, row["question"], row["solution"], instruction=instruction
+            )
+        }
+
+    train = train.map(render, desc="Applying chat template (train)")
+    validation = validation.map(render, desc="Applying chat template (validation)")
     LOGGER.info("SFT datasets ready: %s train / %s validation rows", len(train), len(validation))
     return train, validation
 

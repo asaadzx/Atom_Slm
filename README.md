@@ -38,10 +38,14 @@ Locked design decisions (details in plan §4–§5):
 
 ```
 .
-├── configs/                  # M1 / M2 / M3 / debug training configs
+├── configs/                  # M1 / M2 / M3 / Stage 2 / Stage 3 / debug configs
+├── data/
+│   └── identity/
+│       └── atom_identity.jsonl      # "Who are you?" Q&A rows (Stage 3 persona)
 ├── docs/
 │   ├── Project ATOM-SLM - Plan.md   # the full project plan
 │   ├── kaggle.md                    # Kaggle T4 playbook (limits, resume, tips)
+│   ├── identity.md                  # how the model learns its name/author
 │   └── testing.md                   # test tiers + M1 acceptance criteria
 ├── kaggle/
 │   └── kernel-metadata.json         # template for `kaggle kernels push`
@@ -113,6 +117,8 @@ table. Full walkthrough: [`docs/kaggle.md`](docs/kaggle.md).
 |---|---|---|---|---|
 | `configs/debug.yaml` | — | SmolLM2-135M | full | 128 MetaMathQA rows |
 | `configs/m1_smolm2_135m_metamath.yaml` | M1 | SmolLM2-135M | full FT | 60k MetaMathQA |
+| `configs/stage2_smolm2_135m_metamath.yaml` | Stage 2 | SmolLM2-135M | full FT | 100k MetaMathQA, 2 epochs, numeric answers only |
+| `configs/stage3_identity_polish.yaml` | Stage 3 | `atom-slm-math-135m-v2` | full FT | 25k math replay + identity rows |
 | `configs/m2_smolm2_135m_openmath.yaml` | M2 | SmolLM2-135M | full FT | 500k OpenMathInstruct-2 |
 | `configs/m3_smolm2_360m_lora.yaml` | M3 | SmolLM2-360M | LoRA r=32 | 500k OpenMathInstruct-2 |
 
@@ -134,6 +140,23 @@ Every solution is normalized to end with:
 training and evaluation share one format. The evaluator accepts `####`,
 `\boxed{}`, and "answer is …", and compares numbers with a small relative
 tolerance.
+
+### Model identity
+
+A model does not know its own name unless that name is in its training data.
+Stage 3 mixes a small set of identity Q&A rows
+(`data/identity/atom_identity.jsonl`) into a math replay:
+
+```yaml
+data:
+  identity_path: data/identity/atom_identity.jsonl
+  identity_repeat: 100    # 34 rows x 100 = 3.4k identity rows
+```
+
+Run it with `configs/stage3_identity_polish.yaml`: 25k math rows, ~11%
+identity rows, 1 epoch, LR 2e-5, ~10–20 minutes on a T4. Identity rows go into
+the training split only (validation stays math-only), and they never use the
+`####` marker. Full rationale: [`docs/identity.md`](docs/identity.md).
 
 ## Evaluate
 

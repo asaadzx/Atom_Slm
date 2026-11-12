@@ -17,7 +17,7 @@ pip install pytest pyyaml numpy pandas    # CI does this; no torch needed
 PYTHONPATH=src pytest -q
 ```
 
-Expected: `43 passed`. These tests need no GPU, no model download, no network.
+Expected: `50 passed`. These tests need no GPU, no model download, no network.
 
 ## T1 — pipeline smoke test
 

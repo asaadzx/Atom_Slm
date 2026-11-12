@@ -32,6 +32,8 @@ run_config.yaml
 # Models / data (large files stay out of git; they live on the Hub)
 data/*
 !data/.gitkeep
+!data/identity/
+!data/identity/**
 datasets/
 *.gguf
 *.safetensors

@@ -1,0 +1,44 @@
+# Stage 3 — identity polish ("I am Atom SLM, by Asaadzx")
+# Starts from the Stage 2 checkpoint, replays 25k math rows with ~11% identity
+# rows, 1 epoch at a low LR. ~10–20 minutes on a T4.
+# Docs: docs/identity.md
+run_name: m3a-atom-slm-identity-polish
+base_model: Asaadzx/atom-slm-math-135m-v2   # or a local runs/... directory
+
+method: full
+precision: fp16
+seed: 42
+
+data:
+  name: metamath
+  max_samples: 25000
+  val_samples: 500
+  streaming: true
+  require_numeric_answer: true
+  identity_path: data/identity/atom_identity.jsonl
+  identity_repeat: 100          # 34 rows x 100 = 3.4k identity rows
+
+training:
+  max_length: 1024
+  epochs: 1.0
+  per_device_batch_size: 8      # effective batch 64
+  grad_accum: 8
+  learning_rate: 2.0e-5         # below math training: a small correction
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  optim: adamw_torch
+  gradient_checkpointing: true
+  packing: true
+  logging_steps: 20
+  save_steps: 100
+  eval_steps: 100               # must equal save_steps for load_best_model_at_end
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+hub:
+  push_to_hub: true
+  repo_id: Asaadzx/atom-slm-135m
+  private: false
+  strategy: every_save
